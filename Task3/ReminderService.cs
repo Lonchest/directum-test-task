@@ -3,7 +3,7 @@
 internal interface IReminderService
 {
     void CheckReminder(object? state);
-    void Dispose();
+    void Stop();
     void Start();
 }
 
@@ -30,10 +30,11 @@ internal class ReminderService : IReminderService
 
     public void Start()
     {
+        //раз в минуту поток из пула будет искать встречи, о которых нужно уведомить
         timerForRemindNotify = new Timer(CheckReminder, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
     }
 
-    public void Dispose()
+    public void Stop()
     {
         timerForRemindNotify?.Dispose();
     }

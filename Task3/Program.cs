@@ -10,6 +10,7 @@ internal class Program
 
         reminderService.Start();
         menu.Start();
-        reminderService.Dispose();
+
+        reminderService.Stop();
     }
 }

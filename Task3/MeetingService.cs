@@ -7,7 +7,7 @@ internal interface IMeetingService
     void ExportMeetingsForDate(DateTime date, string pathToFile);
     Meeting GetMeetingByTitle(string title);
     IReadOnlyCollection<Meeting> GetMeetingsByDate(DateTime date);
-    IReadOnlyCollection<Meeting> GetRemindersToNotify(DateTime currentTime);
+    IReadOnlyCollection<Meeting> GetRemindersToNotify(DateTime time);
     bool MeetingWithTitleExists(string title);
     void ReminderSent(Guid id);
     void UpdateMeeting(Guid id, string newTitle, DateTime newStart, DateTime newEnd, TimeSpan newReminder);
@@ -17,18 +17,29 @@ internal class MeetingService : IMeetingService
 {
     private List<Meeting> meetings = new();
 
+    //lock нужен для синхронизации потокрв, так как List<Meeting> не потокобезопасный
+    //Может случиться так, что основной поток добавляет или удаляет встречу
+    //в тот момент, когда другой поток из пула проходиться по списку для нахождения встреч,
+    //о которых нужно уведомить
+    private readonly object lockMeetingModify = new();
+
     private bool IsMeetingsOverlaps(Meeting a, Meeting b)
     {
         return a.StartDate < b.EndDate && b.StartDate < a.EndDate;
     }
+
     public void AddMeeting(Meeting meeting)
     {
+        
         if (meetings.Any(m => IsMeetingsOverlaps(m, meeting)))
         {
             throw new InvalidOperationException("Встреча пересекается с уже существующей");
         }
 
-        meetings.Add(meeting);
+        lock (lockMeetingModify)
+        {
+            meetings.Add(meeting);
+        }
     }
 
     public void UpdateMeeting(Guid id, string newTitle, DateTime newStart, DateTime newEnd, TimeSpan newReminder)
@@ -53,18 +64,24 @@ internal class MeetingService : IMeetingService
             throw new InvalidOperationException("Встреча пересекается с уже существующей");
         }
 
-        meeting.Title = updatedMeeting.Title;
-        meeting.StartDate = updatedMeeting.StartDate;
-        meeting.EndDate = updatedMeeting.EndDate;
-        meeting.RemindTime = updatedMeeting.RemindTime;
+        lock (lockMeetingModify)
+        {
+            meeting.Title = updatedMeeting.Title;
+            meeting.StartDate = updatedMeeting.StartDate;
+            meeting.EndDate = updatedMeeting.EndDate;
+            meeting.RemindTime = updatedMeeting.RemindTime;
 
-        // предполагаю, что после изменения данных встречи о ней снова нужно уведомить
-        meeting.IsReminderSent = false;
+            // предполагаю, что после изменения данных встречи о ней снова нужно уведомить
+            meeting.IsReminderSent = false;
+        }
     }
 
     public void DeleteMeeting(Guid id)
     {
-        meetings.RemoveAll(m => m.Id == id);
+        lock (lockMeetingModify)
+        {
+            meetings.RemoveAll(m => m.Id == id);
+        }
     }
 
     public bool MeetingWithTitleExists(string title)
@@ -93,19 +110,23 @@ internal class MeetingService : IMeetingService
         }
     }
 
-    public IReadOnlyCollection<Meeting> GetRemindersToNotify(DateTime currentTime)
+    public IReadOnlyCollection<Meeting> GetRemindersToNotify(DateTime time)
     {
-        return meetings
-            .Where(m => !m.IsReminderSent && m.RemindDate <= currentTime && m.StartDate > currentTime)
-            .ToList();
+        lock (lockMeetingModify)
+        {
+            return meetings.Where(m => !m.IsReminderSent && m.RemindDate <= time && m.StartDate > time).ToList();
+        }
     }
 
     public void ReminderSent(Guid id)
     {
-        var meeting = meetings.FirstOrDefault(m => m.Id == id);
-        if (meeting != null)
+        lock (lockMeetingModify)
         {
-            meeting.IsReminderSent = true;
+            var meeting = meetings.FirstOrDefault(m => m.Id == id);
+            if (meeting != null)
+            {
+                meeting.IsReminderSent = true;
+            }
         }
     }
 

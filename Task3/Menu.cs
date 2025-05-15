@@ -13,12 +13,12 @@ internal class Menu
 
     public void ShowMenu()
     {
-        Console.WriteLine("\n1 - Добавить встречу");
-        Console.WriteLine("2 - Изменить встречу");
-        Console.WriteLine("3 - Удалить встречу");
-        Console.WriteLine("4 - Просмотреть встречи по дате");
-        Console.WriteLine("5 - Экспорт встреч в файл");
-        Console.WriteLine("6 - Выход");
+        Console.WriteLine("\n1 --- Добавить встречу");
+        Console.WriteLine("2 --- Изменить встречу");
+        Console.WriteLine("3 --- Удалить встречу");
+        Console.WriteLine("4 --- Просмотреть встречи по дате");
+        Console.WriteLine("5 --- Экспорт встреч в файл");
+        Console.WriteLine("6 --- Выход");
     }
 
     public void AddMeeting()
@@ -34,28 +34,27 @@ internal class Menu
             throw new InvalidOperationException("Встреча с таким названием уже существует");
         }
 
-        Console.Write("Начало (в формате гггг-мм-дд чч:мм): ");
+        Console.Write("Начало (в формате год-месяц-день часы:минуты): ");
         var startDate = ValidateDate(Console.ReadLine());
-
         if (startDate <= DateTime.Now)
         {
-            throw new ArgumentOutOfRangeException("Встречи всегда планируются только на будущее время");
+            throw new ArgumentException("Встречи всегда планируются только на будущее время");
         }
 
-        Console.Write("Окончание(в формате гггг-мм-дд чч:мм): ");
+        Console.Write("Окончание(в формате год-месяц-день часы:минуты): ");
         var endDate = ValidateDate(Console.ReadLine());
-
         if (endDate <= startDate)
         {
-            throw new ArgumentOutOfRangeException("Время окончания должно быть позже начала");
+            throw new ArgumentException("Время окончания должно быть позже начала");
         }
 
-        Console.Write("Напомнить за (формат времени чч:мм): ");
+        //так как в задании написано "может быть настроено время", то здесь задается имеенно время в часах и минутах
+        //то есть уведомить можно максимум за день до встречи 
+        Console.Write("Напомнить за (формат времени часы:минуты): ");
         TimeSpan reminderTime;
-
         if (!TimeSpan.TryParse(Console.ReadLine(), out reminderTime))
         {
-            throw new ArgumentOutOfRangeException("Вы ввели время в неверном формате");
+            throw new ArgumentException("Вы ввели время в неверном формате");
         }
 
         var meeting = new Meeting
@@ -91,7 +90,7 @@ internal class Menu
         var newStartDate = string.IsNullOrWhiteSpace(startDateInput) ? meeting.StartDate : DateTime.Parse(startDateInput);
         if (newStartDate <= DateTime.Now)
         {
-            throw new ArgumentOutOfRangeException("Встречи всегда планируются только на будущее время");
+            throw new ArgumentException("Встречи всегда планируются только на будущее время");
         }
 
         Console.Write("Новое окончание (оставьте пустым для пропуска): ");
@@ -99,7 +98,7 @@ internal class Menu
         var newEndDate = string.IsNullOrWhiteSpace(endDateInput) ? meeting.EndDate : DateTime.Parse(endDateInput);
         if (newEndDate <= newStartDate)
         {
-            throw new ArgumentOutOfRangeException("Время окончания должно быть позже начала");
+            throw new ArgumentException("Время окончания должно быть позже начала");
         }
 
         Console.Write("Новое время напоминания (оставьте пустым для пропуска): ");
@@ -199,9 +198,9 @@ internal class Menu
                         break;
                 }
             }
-            catch (ArgumentOutOfRangeException ex)
+            catch (ArgumentException ex)
             {
-                Console.WriteLine($"Ошибка при вводе даты: {ex.Message}");
+                Console.WriteLine($"Ошибка при вводе данных: {ex.Message}");
             }
             catch (InvalidOperationException ex)
             {

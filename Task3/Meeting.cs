@@ -2,6 +2,7 @@
 
 internal class Meeting
 {
+    //изначально делал с базой данных, поэтому было Id. Решил оставить, потому что так удобнее искать встречи
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public string Title { get; set; }
